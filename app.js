@@ -6,6 +6,10 @@ const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
 const encrypt = require("mongoose-encryption");
+const md5 = require("md5")
+const bcrypt = require("bcrypt")
+const saltRounds = 10
+
 const port = 3000
 
 // Connect to mongodb
@@ -42,7 +46,7 @@ app.get("/login", (req, res) => {
 })
 
 app.post("/login", (req, res) => {
-  // get email and password
+    // get email and password
   email = req.body.username
   password = req.body.password
   User.findOne({
@@ -50,11 +54,13 @@ app.post("/login", (req, res) => {
   }, (err, foundUser) => {
     if (!err) {
       if (foundUser != null) {
-        if (foundUser.password === password) {
-          res.render("secrets")
-        } else {
-          res.send("Incorrect password")
-        }
+        bcrypt.compare(password, foundUser.password, (err, result) => {
+            if(result === true){
+              res.render("secrets")
+            } else {
+              res.send("Incorrect password")
+            }
+        })
       } else {
         res.send("user not found!")
       }
@@ -70,13 +76,15 @@ app.get("/register", (req, res) => {
 
 app.post("/register", (req, res) => {
 
-  const newUser = new User({
-    email: req.body.username,
-    password: req.body.password
-  })
+  bcrypt.hash(req.body.password, saltRounds, (err,hash) => {
+    const newUser = new User({
+      email: req.body.username,
+      password: hash
+    })
 
-  newUser.save().then(() => {
-    res.render("secrets")
+    newUser.save().then(() => {
+      res.render("secrets")
+    })
   })
 })
 
